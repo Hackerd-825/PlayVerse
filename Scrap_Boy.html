@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Scrap Boy</title>
+  <style>
+    body {
+      margin: 0;
+      text-align: center;
+      background-color: #0d0d0d;
+      color: #fff;
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+
+    #particles {
+      position: fixed; top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+    }
+
+    h1 {
+      margin: 20px;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+    }
+
+    .game-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 20px;
+    }
+
+    iframe {
+      width: 90vw; height: 70vh;
+      max-width: 900px; max-height: 700px;
+      border: none; border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.7);
+      background: #000;
+    }
+
+    a {
+      color: #00d4ff; text-decoration: none;
+      font-weight: bold;
+    }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <canvas id="particles"></canvas>
+
+  <h1>🤖 Scrap Boy</h1>
+  <div class="game-container">
+    <iframe src="https://www.lexaloffle.com/bbs/widget.php?pid=scrap_boy" allowfullscreen></iframe>
+  </div>
+  <br>
+  <a href="index.html">⬅ Retour à la sélection</a>
+
+  <script>
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+
+    const particles = [];
+    const N = 100;
+    for (let i = 0; i < N; i++) {
+      particles.push({
+        x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+        r: Math.random()*2+1,
+        dx: (Math.random()-0.5)*0.6, dy: (Math.random()-0.5)*0.6,
+        c: '#7aa2ff'
+      });
+    }
+    function loop() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      particles.forEach(p => {
+        ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+        p.x += p.dx; p.y += p.dy;
+        if (p.x<0||p.x>canvas.width) p.dx*=-1;
+        if (p.y<0||p.y>canvas.height) p.dy*=-1;
+      });
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+</body>
+</html>
