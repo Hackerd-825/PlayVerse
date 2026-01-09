@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>PlayVerse</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      color: #fff;
+      background-color: #0d0d0d;
+      overflow-x: hidden;
+    }
+
+    #particles {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+    }
+
+    h1 {
+      margin-top: 30px;
+      font-size: 3em;
+      text-shadow: 0 0 15px #00d4ff, 0 0 30px #00d4ff;
+      font-weight: bold;
+      letter-spacing: 2px;
+    }
+
+    #search {
+      margin-top: 20px;
+      padding: 10px 20px;
+      width: 300px;
+      border-radius: 10px;
+      border: none;
+      font-size: 18px;
+      outline: none;
+    }
+
+    .game-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 40px;
+    }
+
+    .game-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .game-link {
+      text-decoration: none;
+      color: inherit;
+      display: inline-block;
+    }
+
+    .game-link img {
+      width: 200px;
+      height: auto;
+      border-radius: 15px;
+      border: 3px solid #444;
+      box-shadow: 0 0 25px rgba(0,0,0,0.9);
+      transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .game-link img:hover {
+      transform: scale(1.1);
+      border-color: #00d4ff;
+      box-shadow: 0 0 35px rgba(0,212,255,0.8);
+    }
+
+    .game-title {
+      margin-top: 10px;
+      font-size: 20px;
+      font-weight: bold;
+      text-shadow: 1px 1px 5px rgba(0,0,0,0.7);
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="particles"></canvas>
+
+  <h1>Bienvenue dans PlayVerse</h1>
+
+  <input type="text" id="search" placeholder="🔍 Rechercher un jeu...">
+
+  <div class="game-buttons" id="gameList"></div>
+
+  <script>
+    let allGames = [];
+
+    async function loadGames() {
+      const res = await fetch("/api/games");
+      const games = await res.json();
+      allGames = games;
+      displayGames(games);
+    }
+
+    function displayGames(games) {
+      const list = document.getElementById("gameList");
+      list.innerHTML = "";
+
+      games.forEach(g => {
+        const div = document.createElement("div");
+        div.className = "game-card";
+
+        div.innerHTML = `
+          <a href="${g.file}" class="game-link">
+            <img src="${g.image}" onerror="this.src='https://via.placeholder.com/200x200?text=No+Image'">
+            <div class="game-title">${g.name}</div>
+          </a>
+        `;
+
+        list.appendChild(div);
+      });
+    }
+
+    document.getElementById("search").addEventListener("input", e => {
+      const q = e.target.value.toLowerCase();
+      const filtered = allGames.filter(g => g.name.toLowerCase().includes(q));
+      displayGames(filtered);
+    });
+
+    loadGames();
+
+    const canvas = document.getElementById('particles');
+    const ctx = canvas.getContext('2d');
+    function resize() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+    resize(); window.addEventListener('resize', resize);
+
+    const particles = [];
+    const N = 100;
+    for (let i = 0; i < N; i++) {
+      particles.push({
+        x: Math.random()*canvas.width, y: Math.random()*canvas.height,
+        r: Math.random()*2+1,
+        dx: (Math.random()-0.5)*0.6, dy: (Math.random()-0.5)*0.6,
+        c: '#00d4ff'
+      });
+    }
+    function loop() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
+      particles.forEach(p => {
+        ctx.fillStyle = p.c;
+        ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+        p.x += p.dx; p.y += p.dy;
+        if (p.x<0||p.x>canvas.width) p.dx*=-1;
+        if (p.y<0||p.y>canvas.height) p.dy*=-1;
+      });
+      requestAnimationFrame(loop);
+    }
+    loop();
+  </script>
+
+</body>
+</html>
+
