@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Jeu de Réaction</title>
+<style>
+    body {
+        margin: 0;
+        padding: 0;
+        background: #7f1d1d; /* rouge */
+        height: 100vh;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-family: Arial, sans-serif;
+        color: white;
+        user-select: none;
+        transition: background 0.2s;
+    }
+
+    #container {
+        text-align: center;
+    }
+
+    button {
+        padding: 15px 25px;
+        font-size: 20px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        margin-top: 20px;
+        background: #1e3a8a;
+        color: white;
+    }
+
+    button:hover {
+        background: #3b82f6;
+    }
+
+    #message {
+        font-size: 32px;
+        margin-bottom: 20px;
+    }
+</style>
+</head>
+<body>
+
+<div id="container">
+    <div id="message">Clique sur "Commencer"</div>
+    <button id="startBtn">Commencer</button>
+</div>
+
+<script>
+    let startTime = 0;
+    let timeoutID = null;
+    let gameState = "idle"; 
+    // idle → attente du bouton
+    // waiting → rouge, attente aléatoire
+    // ready → vert, prêt à cliquer
+
+    const body = document.body;
+    const msg = document.getElementById("message");
+    const startBtn = document.getElementById("startBtn");
+
+    function startGame() {
+        gameState = "waiting";
+        msg.textContent = "Attends le vert...";
+        startBtn.style.display = "none";
+        body.style.background = "#7f1d1d"; // rouge
+
+        // Attente aléatoire entre 2 et 10 sec
+        const delay = Math.random() * 8000 + 2000;
+
+        timeoutID = setTimeout(() => {
+            body.style.background = "#15803d"; // vert
+            msg.textContent = "CLIQUE !";
+            gameState = "ready";
+            startTime = performance.now();
+        }, delay);
+    }
+
+    function resetGame() {
+        gameState = "idle";
+        msg.textContent = 'Clique sur "Commencer"';
+        startBtn.textContent = "Commencer";
+        startBtn.style.display = "inline-block";
+        body.style.background = "#7f1d1d";
+    }
+
+    // Empêcher le clic sur le bouton d'être pris comme clic sur l'écran
+    startBtn.addEventListener("click", (e) => {
+        e.stopPropagation(); // très important : bloque la propagation vers body
+        if (gameState === "idle") {
+            startGame();
+        }
+    });
+
+    // Clic sur l'écran (fond)
+    body.addEventListener("click", (e) => {
+        // si on clique sur le bouton, on ignore (sécurité en plus)
+        if (e.target === startBtn) return;
+
+        if (gameState === "waiting") {
+            // Trop tôt !
+            clearTimeout(timeoutID);
+            msg.textContent = "Trop tôt !";
+            startBtn.textContent = "Réessayer";
+            startBtn.style.display = "inline-block";
+            gameState = "idle";
+            body.style.background = "#7f1d1d";
+        }
+
+        else if (gameState === "ready") {
+            // Bon clic → calcul du temps
+            const reaction = Math.floor(performance.now() - startTime);
+            msg.textContent = `Réaction : ${reaction} ms`;
+            startBtn.textContent = "Recommencer";
+            startBtn.style.display = "inline-block";
+            gameState = "idle";
+            body.style.background = "#15803d";
+        }
+    });
+</script>
+
+</body>
+</html>

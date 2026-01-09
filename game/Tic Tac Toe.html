@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Tic Tac Toe</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111827;
+            color: #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            padding-top: 40px;
+        }
+
+        h1 {
+            margin-bottom: 10px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+        }
+
+        select, button {
+            background: #1f2937;
+            color: #e5e7eb;
+            border: 1px solid #4b5563;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover, select:hover {
+            border-color: #9ca3af;
+        }
+
+        #status {
+            margin-bottom: 15px;
+            min-height: 20px;
+        }
+
+        .board {
+            display: grid;
+            grid-template-columns: repeat(3, 100px);
+            grid-template-rows: repeat(3, 100px);
+            gap: 5px;
+        }
+
+        .cell {
+            width: 100px;
+            height: 100px;
+            background: #111827;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            cursor: pointer;
+            border: 1px solid #4b5563;
+            transition: background 0.15s, transform 0.1s;
+            user-select: none;
+        }
+
+        .cell:hover {
+            background: #1f2937;
+            transform: translateY(-1px);
+        }
+
+        .cell.disabled {
+            cursor: default;
+            opacity: 0.6;
+        }
+
+        .footer {
+            margin-top: 25px;
+            font-size: 12px;
+            color: #6b7280;
+        }
+    </style>
+</head>
+<body>
+    <h1>Tic Tac Toe</h1>
+
+    <div class="controls">
+        <label for="mode">Mode :</label>
+        <select id="mode">
+            <option value="2p">2 joueurs</option>
+            <option value="easy">Bot facile</option>
+            <option value="medium">Bot moyen</option>
+            <option value="hard">Bot difficile</option>
+        </select>
+        <button id="restart">Recommencer</button>
+    </div>
+
+    <div id="status"></div>
+
+    <div class="board" id="board">
+        <!-- 9 cases -->
+    </div>
+
+    <div class="footer">
+        X commence toujours. Contre le bot : toi = X, bot = O.
+    </div>
+
+    <script>
+        // --- État du jeu ---
+        const boardElement = document.getElementById('board');
+        const statusElement = document.getElementById('status');
+        const modeSelect = document.getElementById('mode');
+        const restartButton = document.getElementById('restart');
+
+        let board;          // tableau 3x3
+        let currentPlayer;  // 'X' ou 'O'
+        let gameOver;       // bool
+        let mode;           // '2p', 'easy', 'medium', 'hard'
+
+        // --- Initialisation du plateau HTML ---
+        function createBoardHTML() {
+            boardElement.innerHTML = '';
+            for (let i = 0; i < 9; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('cell');
+                cell.dataset.index = i.toString();
+                cell.addEventListener('click', onCellClick);
+                boardElement.appendChild(cell);
+            }
+        }
+
+        // --- Reset du jeu ---
+        function resetGame() {
+            board = [
+                [' ', ' ', ' '],
+                [' ', ' ', ' '],
+                [' ', ' ', ' ']
+            ];
+            currentPlayer = 'X';
+            gameOver = false;
+            mode = modeSelect.value;
+            statusElement.textContent = "Tour du joueur X";
+            updateBoardHTML();
+            enableBoard(true);
+        }
+
+        // --- Activer / désactiver les cases ---
+        function enableBoard(enable) {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                if (enable) {
+                    cell.classList.remove('disabled');
+                } else {
+                    cell.classList.add('disabled');
+                }
+            });
+        }
+
+        // --- Affichage du plateau dans le DOM ---
+        function updateBoardHTML() {
+            const cells = document.querySelectorAll('.cell');
+            cells.forEach(cell => {
+                const i = parseInt(cell.dataset.index, 10);
+                const x = Math.floor(i / 3);
+                const y = i % 3;
+                cell.textContent = board[x][y] === ' ' ? '' : board[x][y];
+            });
+        }
+
+        // --- Vérif victoire ---
+        function checkWin(b, player) {
+            const lines = [
+                // Lignes
+                [[0,0], [0,1], [0,2]],
+                [[1,0], [1,1], [1,2]],
+                [[2,0], [2,1], [2,2]],
+                // Colonnes
+                [[0,0], [1,0], [2,0]],
+                [[0,1], [1,1], [2,1]],
+                [[0,2], [1,2], [2,2]],
+                // Diagonales
+                [[0,0], [1,1], [2,2]],
+                [[0,2], [1,1], [2,0]]
+            ];
+            return lines.some(line =>
+                line.every(([x, y]) => b[x][y] === player)
+            );
+        }
+
+        // --- Vérif match nul ---
+        function checkDraw(b) {
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (b[i][j] === ' ') return false;
+                }
+            }
+            return true;
+        }
+
+        // --- Click sur une case ---
+        function onCellClick(e) {
+            if (gameOver) return;
+
+            const index = parseInt(e.target.dataset.index, 10);
+            const x = Math.floor(index / 3);
+            const y = index % 3;
+
+            if (board[x][y] !== ' ') return;
+
+            // Coup du joueur humain
+            board[x][y] = currentPlayer;
+            updateBoardHTML();
+
+            if (checkWin(board, currentPlayer)) {
+                statusElement.textContent = `Le joueur ${currentPlayer} a gagné !`;
+                gameOver = true;
+                enableBoard(false);
+                return;
+            }
+
+            if (checkDraw(board)) {
+                statusElement.textContent = "Match nul.";
+                gameOver = true;
+                enableBoard(false);
+                return;
+            }
+
+            if (mode === '2p') {
+                // Alternance classique
+                currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+                statusElement.textContent = `Tour du joueur ${currentPlayer}`;
+            } else {
+                // Bot joue toujours 'O'
+                currentPlayer = 'O';
+                statusElement.textContent = "Tour du bot...";
+                enableBoard(false);
+
+                setTimeout(() => {
+                    botPlay();
+                }, 300); // petit délai pour le ressenti
+            }
+        }
+
+        // --- Méthodes bot ---
+        function getEmptyCells(b) {
+            const empty = [];
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (b[i][j] === ' ') empty.push([i, j]);
+                }
+            }
+            return empty;
+        }
+
+        // Bot facile : random
+        function botEasy(b) {
+            const empty = getEmptyCells(b);
+            if (empty.length === 0) return null;
+            return empty[Math.floor(Math.random() * empty.length)];
+        }
+
+        // Bot moyen : gagne si possible, bloque sinon, sinon random
+        function botMedium(b, bot, human) {
+            // 1. Peut-il gagner ?
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (b[i][j] === ' ') {
+                        b[i][j] = bot;
+                        if (checkWin(b, bot)) {
+                            b[i][j] = ' ';
+                            return [i, j];
+                        }
+                        b[i][j] = ' ';
+                    }
+                }
+            }
+            // 2. Bloque l'humain
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (b[i][j] === ' ') {
+                        b[i][j] = human;
+                        if (checkWin(b, human)) {
+                            b[i][j] = ' ';
+                            return [i, j];
+                        }
+                        b[i][j] = ' ';
+                    }
+                }
+            }
+            // 3. Sinon random
+            return botEasy(b);
+        }
+
+        // Bot difficile : Minimax
+        function minimax(b, depth, isMaximizing, bot, human) {
+            if (checkWin(b, bot)) return 10 - depth;
+            if (checkWin(b, human)) return depth - 10;
+            if (checkDraw(b)) return 0;
+
+            if (isMaximizing) {
+                let best = -Infinity;
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        if (b[i][j] === ' ') {
+                            b[i][j] = bot;
+                            const score = minimax(b, depth + 1, false, bot, human);
+                            b[i][j] = ' ';
+                            if (score > best) best = score;
+                        }
+                    }
+                }
+                return best;
+            } else {
+                let best = Infinity;
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        if (b[i][j] === ' ') {
+                            b[i][j] = human;
+                            const score = minimax(b, depth + 1, true, bot, human);
+                            b[i][j] = ' ';
+                            if (score < best) best = score;
+                        }
+                    }
+                }
+                return best;
+            }
+        }
+
+        function botHard(b, bot, human) {
+            let bestScore = -Infinity;
+            let bestMove = null;
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (b[i][j] === ' ') {
+                        b[i][j] = bot;
+                        const score = minimax(b, 0, false, bot, human);
+                        b[i][j] = ' ';
+                        if (score > bestScore) {
+                            bestScore = score;
+                            bestMove = [i, j];
+                        }
+                    }
+                }
+            }
+            return bestMove;
+        }
+
+        // --- Tour du bot ---
+        function botPlay() {
+            if (gameOver) return;
+
+            const bot = 'O';
+            const human = 'X';
+            let move = null;
+
+            if (mode === 'easy') {
+                move = botEasy(board);
+            } else if (mode === 'medium') {
+                move = botMedium(board, bot, human);
+            } else if (mode === 'hard') {
+                move = botHard(board, bot, human);
+            }
+
+            if (move) {
+                const [x, y] = move;
+                board[x][y] = bot;
+                updateBoardHTML();
+            }
+
+            if (checkWin(board, bot)) {
+                statusElement.textContent = "Le bot a gagné !";
+                gameOver = true;
+                enableBoard(false);
+                return;
+            }
+
+            if (checkDraw(board)) {
+                statusElement.textContent = "Match nul.";
+                gameOver = true;
+                enableBoard(false);
+                return;
+            }
+
+            currentPlayer = human;
+            statusElement.textContent = "Tour du joueur X";
+            enableBoard(true);
+        }
+
+        // --- Listeners ---
+        modeSelect.addEventListener('change', resetGame);
+        restartButton.addEventListener('click', resetGame);
+
+        // --- Lancement ---
+        createBoardHTML();
+        resetGame();
+    </script>
+</body>
+</html>
