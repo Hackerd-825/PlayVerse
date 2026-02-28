@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Aim Trainer</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#111827;
+    color:#e5e7eb;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px;
+    box-sizing:border-box;
+  }
+  h1{margin:0 0 10px}
+  .top-bar{
+    display:flex;
+    flex-wrap:wrap;
+    gap:10px;
+    justify-content:center;
+    margin-bottom:10px;
+  }
+  button,select{
+    background:#1f2937;
+    color:#e5e7eb;
+    border:1px solid #4b5563;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  button:hover,select:hover{border-color:#9ca3af}
+  .stats{
+    display:flex;
+    flex-wrap:wrap;
+    gap:12px;
+    justify-content:center;
+    margin-bottom:10px;
+    font-size:14px;
+    color:#9ca3af;
+  }
+  #status{min-height:20px;margin-bottom:10px}
+  .arena{
+    position:relative;
+    width:100%;
+    max-width:600px;
+    height:400px;
+    background:#020617;
+    border-radius:10px;
+    border:1px solid #1f2937;
+    overflow:hidden;
+    touch-action:manipulation;
+  }
+  .target{
+    position:absolute;
+    width:50px;
+    height:50px;
+    border-radius:50%;
+    background:#ef4444;
+    box-shadow:0 0 10px rgba(239,68,68,0.7);
+    transform:translate(-50%,-50%);
+  }
+</style>
+</head>
+<body>
+<h1>Aim Trainer</h1>
+
+<div class="top-bar">
+  <button id="startBtn">Démarrer</button>
+  <button id="stopBtn">Arrêter</button>
+  <select id="modeSelect">
+    <option value="normal">Mode normal</option>
+    <option value="precision">Mode précision</option>
+  </select>
+</div>
+
+<div class="stats">
+  <div>Score : <span id="score">0</span></div>
+  <div>Temps : <span id="time">0.0</span> s</div>
+  <div>Score / s : <span id="scorePerSec">0.0</span></div>
+  <div>Précision : <span id="accuracy">0%</span></div>
+</div>
+
+<div id="status">Clique sur Démarrer pour commencer.</div>
+
+<div class="arena" id="arena"></div>
+
+<script>
+(() => {
+  const arena = document.getElementById('arena');
+  const startBtn = document.getElementById('startBtn');
+  const stopBtn = document.getElementById('stopBtn');
+  const modeSelect = document.getElementById('modeSelect');
+  const scoreSpan = document.getElementById('score');
+  const timeSpan = document.getElementById('time');
+  const scorePerSecSpan = document.getElementById('scorePerSec');
+  const accuracySpan = document.getElementById('accuracy');
+  const statusDiv = document.getElementById('status');
+
+  let running = false;
+  let score = 0;
+  let clicksTotal = 0;
+  let startTime = 0;
+  let lastSpawn = 0;
+  let interval = 900;
+  const minInterval = 200;
+  let targetEl = null;
+  let rafId = null;
+
+  function resetStats(){
+    score = 0;
+    clicksTotal = 0;
+    startTime = 0;
+    lastSpawn = 0;
+    interval = 900;
+    scoreSpan.textContent = '0';
+    timeSpan.textContent = '0.0';
+    scorePerSecSpan.textContent = '0.0';
+    accuracySpan.textContent = '0%';
+  }
+
+  function spawnTarget(){
+    if(!running) return;
+    if(!targetEl){
+      targetEl = document.createElement('div');
+      targetEl.className = 'target';
+      arena.appendChild(targetEl);
+      targetEl.addEventListener('click', onTargetClick);
+      targetEl.addEventListener('touchstart', e => { e.preventDefault(); onTargetClick(e); }, {passive:false});
+    }
+    const rect = arena.getBoundingClientRect();
+    const margin = 30;
+    const x = margin + Math.random() * (rect.width - 2*margin);
+    const y = margin + Math.random() * (rect.height - 2*margin);
+    targetEl.style.left = x + 'px';
+    targetEl.style.top = y + 'px';
+  }
+
+  function onTargetClick(e){
+    if(!running) return;
+    e.stopPropagation();
+    score++;
+    scoreSpan.textContent = score;
+    clicksTotal++;
+    updateDerivedStats();
+    interval = Math.max(minInterval, interval - 20);
+    spawnTarget();
+  }
+
+  function onArenaClick(){
+    if(!running) return;
+    clicksTotal++;
+    updateDerivedStats();
+  }
+
+  function updateDerivedStats(){
+    const now = performance.now();
+    const elapsed = (now - startTime) / 1000;
+    timeSpan.textContent = elapsed.toFixed(1);
+    const sps = elapsed > 0 ? score / elapsed : 0;
+    scorePerSecSpan.textContent = sps.toFixed(2);
+    const acc = clicksTotal > 0 ? (score / clicksTotal) * 100 : 0;
+    accuracySpan.textContent = acc.toFixed(0) + '%';
+  }
+
+  function loop(timestamp){
+    if(!running) return;
+    if(!startTime) startTime = timestamp;
+    const elapsedSinceLast = timestamp - lastSpawn;
+    if(elapsedSinceLast >= interval){
+      spawnTarget();
+      lastSpawn = timestamp;
+    }
+    updateDerivedStats();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function start(){
+    if(running) return;
+    running = true;
+    resetStats();
+    statusDiv.textContent = modeSelect.value === 'precision'
+      ? 'Mode précision : évite de cliquer à côté.'
+      : 'Mode normal : clique le plus vite possible.';
+    lastSpawn = 0;
+    startTime = 0;
+    spawnTarget();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function stop(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    statusDiv.textContent = 'Partie terminée. Clique sur Démarrer pour rejouer.';
+  }
+
+  startBtn.addEventListener('click', start);
+  stopBtn.addEventListener('click', stop);
+  arena.addEventListener('click', onArenaClick);
+  arena.addEventListener('touchstart', e => {
+    if(e.target === arena){
+      clicksTotal++;
+      updateDerivedStats();
+    }
+  }, {passive:true});
+})();
+</script>
+</body>
+</html>

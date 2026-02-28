@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Jeu du Pendu</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{
+    margin:0;
+    font-family:Arial,sans-serif;
+    background:#111827;
+    color:#e5e7eb;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    padding:20px;
+    box-sizing:border-box;
+  }
+  h1{margin:0 0 10px}
+  .top-bar{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    justify-content:center;
+    margin-bottom:10px;
+  }
+  button,select,input{
+    background:#1f2937;
+    color:#e5e7eb;
+    border:1px solid #4b5563;
+    padding:6px 10px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  button:hover,select:hover,input:focus{border-color:#9ca3af;outline:none}
+  input{min-width:160px}
+  #status{min-height:20px;margin:10px 0}
+  .word{
+    display:flex;
+    gap:8px;
+    justify-content:center;
+    margin-bottom:10px;
+    font-size:26px;
+    letter-spacing:2px;
+  }
+  .letter-box{
+    min-width:20px;
+    border-bottom:2px solid #4b5563;
+    text-align:center;
+  }
+  .keyboard{
+    display:grid;
+    grid-template-columns:repeat(9,1fr);
+    gap:6px;
+    max-width:420px;
+    margin-top:10px;
+  }
+  .key{
+    padding:6px 0;
+    text-align:center;
+    border-radius:4px;
+    background:#1f2937;
+    border:1px solid #4b5563;
+    cursor:pointer;
+    user-select:none;
+  }
+  .key.used{
+    opacity:0.4;
+    cursor:default;
+  }
+  .panel{
+    margin-top:8px;
+    font-size:14px;
+    color:#9ca3af;
+  }
+</style>
+</head>
+<body>
+<h1>Jeu du Pendu</h1>
+
+<div class="top-bar">
+  <select id="modeSelect">
+    <option value="bot">Contre le bot</option>
+    <option value="p2p">2 joueurs</option>
+  </select>
+  <button id="newGameBtn">Nouvelle partie</button>
+</div>
+
+<div id="p2pInputArea" style="display:none;margin-bottom:10px;">
+  <input type="password" id="secretWordInput" placeholder="Mot du joueur 1">
+  <button id="setWordBtn">Valider le mot</button>
+</div>
+
+<div id="status">Choisis un mode et lance une nouvelle partie.</div>
+
+<div class="word" id="wordDisplay"></div>
+
+<div class="panel">
+  Erreurs : <span id="errors">0</span> / <span id="maxErrors">8</span>
+</div>
+
+<div class="keyboard" id="keyboard"></div>
+
+<script>
+(() => {
+  const modeSelect = document.getElementById('modeSelect');
+  const newGameBtn = document.getElementById('newGameBtn');
+  const p2pInputArea = document.getElementById('p2pInputArea');
+  const secretWordInput = document.getElementById('secretWordInput');
+  const setWordBtn = document.getElementById('setWordBtn');
+  const statusDiv = document.getElementById('status');
+  const wordDisplay = document.getElementById('wordDisplay');
+  const keyboardDiv = document.getElementById('keyboard');
+  const errorsSpan = document.getElementById('errors');
+  const maxErrorsSpan = document.getElementById('maxErrors');
+
+  const maxErrors = 8;
+  maxErrorsSpan.textContent = maxErrors;
+
+  let secretWord = '';
+  let revealed = [];
+  let usedLetters = new Set();
+  let errors = 0;
+  let gameOver = false;
+
+  const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+  const syllables = [
+    'ba','be','bi','bo','bu',
+    'la','le','li','lo','lu',
+    'ma','me','mi','mo','mu',
+    'sa','se','si','so','su',
+    'ra','re','ri','ro','ru',
+    'ta','te','ti','to','tu',
+    'na','ne','ni','no','nu',
+    'pa','pe','pi','po','pu',
+    'fa','fe','fi','fo','fu',
+    'ca','ce','ci','co','cu'
+  ];
+
+  function generateBotWord(){
+    const syllCount = 2 + Math.floor(Math.random()*3); // 2 à 4 syllabes
+    let w = '';
+    for(let i=0;i<syllCount;i++){
+      const s = syllables[Math.floor(Math.random()*syllables.length)];
+      w += s;
+    }
+    return w.toUpperCase();
+  }
+
+  function initKeyboard(){
+    keyboardDiv.innerHTML = '';
+    alphabet.forEach(letter => {
+      const key = document.createElement('div');
+      key.className = 'key';
+      key.textContent = letter;
+      key.dataset.letter = letter;
+      key.addEventListener('click', () => onLetterClick(letter));
+      keyboardDiv.appendChild(key);
+    });
+  }
+
+  function updateKeyboard(){
+    const keys = keyboardDiv.querySelectorAll('.key');
+    keys.forEach(k => {
+      const l = k.dataset.letter;
+      if(usedLetters.has(l)) k.classList.add('used');
+      else k.classList.remove('used');
+    });
+  }
+
+  function updateWordDisplay(){
+    wordDisplay.innerHTML = '';
+    for(let i=0;i<secretWord.length;i++){
+      const span = document.createElement('div');
+      span.className = 'letter-box';
+      span.textContent = revealed[i] ? secretWord[i] : '';
+      wordDisplay.appendChild(span);
+    }
+  }
+
+  function checkWin(){
+    if(revealed.every(v => v)){
+      statusDiv.textContent = 'Bravo ! Tu as trouvé le mot : ' + secretWord;
+      gameOver = true;
+    }
+  }
+
+  function checkLose(){
+    if(errors >= maxErrors){
+      statusDiv.textContent = 'Perdu ! Le mot était : ' + secretWord;
+      gameOver = true;
+    }
+  }
+
+  function onLetterClick(letter){
+    if(gameOver || !secretWord) return;
+    if(usedLetters.has(letter)) return;
+    usedLetters.add(letter);
+    let found = false;
+    for(let i=0;i<secretWord.length;i++){
+      if(secretWord[i] === letter){
+        revealed[i] = true;
+        found = true;
+      }
+    }
+    if(!found){
+      errors++;
+      errorsSpan.textContent = errors;
+    }
+    updateWordDisplay();
+    updateKeyboard();
+    checkWin();
+    checkLose();
+  }
+
+  function startBotGame(){
+    secretWord = generateBotWord();
+    revealed = Array(secretWord.length).fill(false);
+    usedLetters.clear();
+    errors = 0;
+    errorsSpan.textContent = '0';
+    gameOver = false;
+    updateWordDisplay();
+    initKeyboard();
+    statusDiv.textContent = 'Le bot a choisi un mot. À toi de deviner.';
+  }
+
+  function startP2PSetup(){
+    secretWordInput.value = '';
+    p2pInputArea.style.display = 'flex';
+    statusDiv.textContent = 'Joueur 1 : entre un mot (il sera caché).';
+  }
+
+  function startP2PGame(word){
+    secretWord = word.toUpperCase().replace(/[^A-Z]/g,'');
+    if(!secretWord){
+      statusDiv.textContent = 'Mot invalide.';
+      return;
+    }
+    p2pInputArea.style.display = 'none';
+    revealed = Array(secretWord.length).fill(false);
+    usedLetters.clear();
+    errors = 0;
+    errorsSpan.textContent = '0';
+    gameOver = false;
+    updateWordDisplay();
+    initKeyboard();
+    statusDiv.textContent = 'Joueur 2 : devine le mot.';
+  }
+
+  newGameBtn.addEventListener('click', () => {
+    if(modeSelect.value === 'bot'){
+      p2pInputArea.style.display = 'none';
+      startBotGame();
+    } else {
+      startP2PSetup();
+    }
+  });
+
+  setWordBtn.addEventListener('click', () => {
+    startP2PGame(secretWordInput.value);
+  });
+
+  initKeyboard();
+})();
+</script>
+</body>
+</html>
