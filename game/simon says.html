@@ -1,86 +1,196 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Simon Says</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #111827;
-            color: #e5e7eb;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: flex-start;
-            min-height: 100vh;
-            margin: 0;
-            padding-top: 40px;
-        }
-        h1 { margin-bottom: 10px; }
-        .controls {
-            margin-bottom: 10px;
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-        }
-        button {
-            background: #1f2937;
-            color: #e5e7eb;
-            border: 1px solid #4b5563;
-            padding: 6px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-        }
-        button:hover { border-color: #9ca3af; }
-        #status { margin-bottom: 10px; min-height: 20px; }
-        .board {
-            display: grid;
-            grid-template-columns: repeat(2, 120px);
-            grid-template-rows: repeat(2, 120px);
-            gap: 10px;
-        }
-        .pad {
-            width: 120px;
-            height: 120px;
-            border-radius: 12px;
-            opacity: 0.7;
-            cursor: pointer;
-            transition: transform 0.1s, opacity 0.1s;
-        }
-        .pad.active {
-            opacity: 1;
-            transform: scale(1.05);
-        }
-        .pad0 { background: #ef4444; }
-        .pad1 { background: #22c55e; }
-        .pad2 { background: #3b82f6; }
-        .pad3 { background: #eab308; }
-    </style>
+<meta charset="UTF-8">
+<title>Simon Says Dynamique</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #111827;
+        color: #e5e7eb;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding-top: 40px;
+        margin: 0;
+    }
+
+    h1 { margin-bottom: 10px; }
+
+    .controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+    }
+
+    input, button {
+        background: #1f2937;
+        color: #e5e7eb;
+        border: 1px solid #4b5563;
+        padding: 6px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        text-align: center;
+    }
+
+    input {
+        width: 55px;
+        font-size: 16px;
+    }
+
+    #status {
+        margin-bottom: 15px;
+        min-height: 20px;
+    }
+
+    .board {
+        display: grid;
+        gap: 6px;
+        margin-bottom: 20px;
+    }
+
+    .pad {
+        border-radius: 8px;
+        opacity: 0.7;
+        transition: opacity 0.15s, transform 0.15s;
+        cursor: pointer;
+    }
+
+    .pad.active {
+        opacity: 1;
+        transform: scale(1.05);
+    }
+</style>
 </head>
+
 <body>
+
 <h1>Simon Says</h1>
 
 <div class="controls">
+    <input type="number" id="rows" value="2" min="1">
+    <span style="font-size:20px;">×</span>
+    <input type="number" id="cols" value="2" min="1">
+    <button id="apply">Appliquer</button>
     <button id="start">Démarrer</button>
 </div>
 
-<div id="status">Clique sur Démarrer pour commencer.</div>
+<div id="status">Choisis une taille puis clique sur Démarrer.</div>
 
-<div class="board">
-    <div class="pad pad0" data-id="0"></div>
-    <div class="pad pad1" data-id="1"></div>
-    <div class="pad pad2" data-id="2"></div>
-    <div class="pad pad3" data-id="3"></div>
-</div>
+<div class="board" id="board"></div>
 
 <script>
-    const pads = Array.from(document.querySelectorAll(".pad"));
+    const boardDiv = document.getElementById("board");
     const statusDiv = document.getElementById("status");
+    const rowsInput = document.getElementById("rows");
+    const colsInput = document.getElementById("cols");
+    const applyBtn = document.getElementById("apply");
+    const startBtn = document.getElementById("start");
+
+    let ROWS = 2;
+    let COLS = 2;
+    let pads = [];
     let sequence = [];
     let playerIndex = 0;
     let playing = false;
+
+    // Couleurs classiques pour 2x2
+    const classicColors = ["#ef4444", "#22c55e", "#3b82f6", "#eab308"];
+
+    // Génération de couleurs infinies via espacement d'or
+    function generateColor(index) {
+        const goldenAngle = 137.508; 
+        const hue = (index * goldenAngle) % 360;
+        return `hsl(${hue}, 80%, 55%)`;
+    }
+
+    // Vérifie si deux couleurs sont trop proches (distance perceptuelle)
+    function colorDistance(c1, c2) {
+        const rgb1 = c1.match(/\d+/g).map(Number);
+        const rgb2 = c2.match(/\d+/g).map(Number);
+        return Math.sqrt(
+            (rgb1[0] - rgb2[0]) ** 2 +
+            (rgb1[1] - rgb2[1]) ** 2 +
+            (rgb1[2] - rgb2[2]) ** 2
+        );
+    }
+
+    // Convertit HSL → RGB pour comparaison
+    function hslToRgb(h, s, l) {
+        s /= 100; l /= 100;
+        const k = n => (n + h / 30) % 12;
+        const a = s * Math.min(l, 1 - l);
+        const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+        return [
+            Math.round(255 * f(0)),
+            Math.round(255 * f(8)),
+            Math.round(255 * f(4))
+        ];
+    }
+
+    function computeCellSize() {
+        const screenWidth = window.innerWidth - 20;
+        const maxCellSize = 100;
+        const minCellSize = 25;
+        const size = Math.floor(screenWidth / COLS) - 6;
+        return Math.max(minCellSize, Math.min(maxCellSize, size));
+    }
+
+    function buildBoard() {
+        ROWS = parseInt(rowsInput.value);
+        COLS = parseInt(colsInput.value);
+
+        const cellSize = computeCellSize();
+
+        boardDiv.innerHTML = "";
+        boardDiv.style.gridTemplateColumns = `repeat(${COLS}, ${cellSize}px)`;
+        boardDiv.style.gridTemplateRows = `repeat(${ROWS}, ${cellSize}px)`;
+
+        pads = [];
+        const total = ROWS * COLS;
+
+        for (let i = 0; i < total; i++) {
+            const pad = document.createElement("div");
+            pad.classList.add("pad");
+            pad.dataset.id = i;
+
+            pad.style.width = cellSize + "px";
+            pad.style.height = cellSize + "px";
+
+            let color;
+
+            if (ROWS === 2 && COLS === 2) {
+                color = classicColors[i];
+            } else {
+                let tries = 0;
+                do {
+                    const hue = (i * 137.508) % 360;
+                    const rgb = hslToRgb(hue, 80, 55);
+                    color = `rgb(${rgb[0]},${rgb[1]},${rgb[2]})`;
+                    tries++;
+                } while (
+                    tries < 10 &&
+                    (
+                        (i % COLS !== 0 && pads[i - 1] && colorDistance(color, pads[i - 1].style.backgroundColor) < 80) ||
+                        (i >= COLS && pads[i - COLS] && colorDistance(color, pads[i - COLS].style.backgroundColor) < 80)
+                    )
+                );
+            }
+
+            pad.style.backgroundColor = color;
+
+            pad.addEventListener("click", () => handlePlayerClick(i));
+            boardDiv.appendChild(pad);
+            pads.push(pad);
+        }
+
+        statusDiv.textContent = "Grille mise à jour.";
+    }
 
     function sleep(ms) {
         return new Promise(res => setTimeout(res, ms));
@@ -101,43 +211,41 @@
 
     async function nextRound() {
         playerIndex = 0;
-        sequence.push(Math.floor(Math.random() * 4));
+        sequence.push(Math.floor(Math.random() * pads.length));
         statusDiv.textContent = `Niveau ${sequence.length}`;
         await sleep(500);
         playSequence();
     }
 
-    function resetGame() {
-        sequence = [];
-        playerIndex = 0;
-        playing = false;
-        statusDiv.textContent = "Clique sur Démarrer pour commencer.";
+    function handlePlayerClick(id) {
+        if (playing || sequence.length === 0) return;
+
+        const pad = pads[id];
+        pad.classList.add("active");
+        setTimeout(() => pad.classList.remove("active"), 150);
+
+        if (id === sequence[playerIndex]) {
+            playerIndex++;
+            if (playerIndex === sequence.length) {
+                statusDiv.textContent = "Bien joué ! Prochain niveau...";
+                setTimeout(nextRound, 700);
+            }
+        } else {
+            statusDiv.textContent = `Raté ! Tu as atteint le niveau ${sequence.length}.`;
+            sequence = [];
+        }
     }
 
-    pads.forEach(pad => {
-        pad.addEventListener("click", () => {
-            if (playing || sequence.length === 0) return;
-            const id = Number(pad.dataset.id);
-            pad.classList.add("active");
-            setTimeout(() => pad.classList.remove("active"), 150);
-
-            if (id === sequence[playerIndex]) {
-                playerIndex++;
-                if (playerIndex === sequence.length) {
-                    statusDiv.textContent = "Bien joué ! Prochain niveau...";
-                    setTimeout(nextRound, 700);
-                }
-            } else {
-                statusDiv.textContent = `Raté ! Tu as atteint le niveau ${sequence.length}.`;
-                resetGame();
-            }
-        });
-    });
-
-    document.getElementById("start").addEventListener("click", () => {
-        resetGame();
+    applyBtn.addEventListener("click", buildBoard);
+    startBtn.addEventListener("click", () => {
+        sequence = [];
         nextRound();
     });
+
+    window.addEventListener("resize", buildBoard);
+
+    buildBoard();
 </script>
+
 </body>
 </html>
