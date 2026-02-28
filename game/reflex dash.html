@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Reflex Dash</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{margin:0;font-family:Arial,sans-serif;background:#111827;color:#e5e7eb;
+       display:flex;flex-direction:column;align-items:center;padding:20px;box-sizing:border-box;}
+  h1{margin:0 0 10px}
+  .top{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;}
+  button{background:#1f2937;color:#e5e7eb;border:1px solid #4b5563;padding:6px 10px;
+         border-radius:6px;cursor:pointer;}
+  button:hover{border-color:#9ca3af}
+  .stats{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:10px;font-size:14px;color:#9ca3af;}
+  #status{min-height:20px;margin-bottom:10px}
+  .arena{width:100%;max-width:400px;height:200px;background:#020617;border-radius:10px;
+         border:1px solid #1f2937;display:flex;align-items:center;justify-content:center;font-size:60px;}
+  .keys{display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;justify-content:center;}
+  .keybtn{width:60px;height:60px;display:flex;align-items:center;justify-content:center;
+          background:#1f2937;border:1px solid #4b5563;border-radius:8px;font-size:30px;cursor:pointer;}
+</style>
+</head>
+<body>
+<h1>Reflex Dash</h1>
+
+<div class="top">
+  <button id="startBtn">Démarrer</button>
+  <button id="stopBtn">Arrêter</button>
+</div>
+
+<div class="stats">
+  <div>Score : <span id="score">0</span></div>
+  <div>Vitesse : <span id="speed">1.0</span>x</div>
+  <div>Ratés : <span id="miss">0</span></div>
+</div>
+
+<div id="status">Appuie sur la flèche affichée le plus vite possible.</div>
+
+<div class="arena" id="arena">–</div>
+
+<div class="keys">
+  <div class="keybtn" data-dir="ArrowUp">↑</div>
+  <div class="keybtn" data-dir="ArrowLeft">←</div>
+  <div class="keybtn" data-dir="ArrowDown">↓</div>
+  <div class="keybtn" data-dir="ArrowRight">→</div>
+</div>
+
+<script>
+(() => {
+  const dirs=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'];
+  const symbols={ArrowUp:'↑',ArrowDown:'↓',ArrowLeft:'←',ArrowRight:'→'};
+  const arena=document.getElementById('arena');
+  const startBtn=document.getElementById('startBtn');
+  const stopBtn=document.getElementById('stopBtn');
+  const scoreSpan=document.getElementById('score');
+  const speedSpan=document.getElementById('speed');
+  const missSpan=document.getElementById('miss');
+
+  let running=false,currentDir=null,score=0,miss=0,delay=1200,minDelay=350,timeoutId=null;
+
+  function nextDir(){
+    if(!running) return;
+    currentDir=dirs[Math.floor(Math.random()*dirs.length)];
+    arena.textContent=symbols[currentDir];
+    delay=Math.max(minDelay,delay-20);
+    speedSpan.textContent=(1200/delay).toFixed(1);
+    timeoutId=setTimeout(()=>{
+      miss++;
+      missSpan.textContent=miss;
+      nextDir();
+    },delay);
+  }
+
+  function handleInput(dir){
+    if(!running||!currentDir) return;
+    if(dir===currentDir){
+      clearTimeout(timeoutId);
+      score++;
+      scoreSpan.textContent=score;
+      nextDir();
+    }else{
+      miss++;
+      missSpan.textContent=miss;
+    }
+  }
+
+  document.addEventListener('keydown',e=>{
+    if(dirs.includes(e.key)) handleInput(e.key);
+  });
+
+  document.querySelectorAll('.keybtn').forEach(b=>{
+    b.addEventListener('click',()=>handleInput(b.dataset.dir));
+  });
+
+  function start(){
+    if(running) return;
+    running=true;score=0;miss=0;delay=1200;
+    scoreSpan.textContent='0';missSpan.textContent='0';speedSpan.textContent='1.0';
+    nextDir();
+  }
+
+  function stop(){
+    running=false;
+    clearTimeout(timeoutId);
+    arena.textContent='–';
+  }
+
+  startBtn.addEventListener('click',start);
+  stopBtn.addEventListener('click',stop);
+})();
+</script>
+</body>
+</html>

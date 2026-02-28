@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Course au clic</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body{margin:0;font-family:Arial,sans-serif;background:#111827;color:#e5e7eb;
+       display:flex;flex-direction:column;align-items:center;padding:20px;}
+  h1{margin-bottom:10px}
+  .top{display:flex;gap:10px;margin-bottom:10px;}
+  select,button{background:#1f2937;color:#e5e7eb;border:1px solid #4b5563;padding:6px 10px;border-radius:6px;}
+  .arena{width:100%;max-width:400px;height:200px;background:#020617;border-radius:10px;
+         border:1px solid #1f2937;display:flex;align-items:center;justify-content:center;}
+  .clickBtn{width:160px;height:80px;border-radius:10px;background:#1f2937;border:1px solid #4b5563;
+            font-size:20px;cursor:pointer;}
+  .stats{text-align:center;margin-top:10px;color:#9ca3af;}
+</style>
+</head>
+<body>
+
+<h1>Course au clic</h1>
+
+<div class="top">
+  <select id="mode">
+    <option value="easy">Facile</option>
+    <option value="medium">Moyen</option>
+    <option value="hard">Difficile</option>
+  </select>
+  <button id="startBtn">Démarrer</button>
+</div>
+
+<div id="status">Choisis un mode et clique le plus vite possible.</div>
+
+<div class="arena">
+  <button class="clickBtn" id="clickBtn" disabled>Clique !</button>
+</div>
+
+<div class="stats">
+  Toi : <span id="playerScore">0</span> clics<br>
+  Bot : <span id="botScore">0</span> clics
+</div>
+
+<script>
+(() => {
+  const startBtn=document.getElementById('startBtn');
+  const clickBtn=document.getElementById('clickBtn');
+  const modeSel=document.getElementById('mode');
+  const statusDiv=document.getElementById('status');
+  const playerSpan=document.getElementById('playerScore');
+  const botSpan=document.getElementById('botScore');
+
+  let running=false,player=0,bot=0,botInterval=null,timer=null;
+
+  function getBotSpeed(){
+    const mode=modeSel.value;
+    if(mode==='easy') return 3 + Math.random()*2;
+    if(mode==='medium') return 6 + Math.random()*3;
+    return 10 + Math.random()*4;
+  }
+
+  function start(){
+    if(running) return;
+    running=true;
+    player=0;bot=0;
+    playerSpan.textContent='0';
+    botSpan.textContent='0';
+    clickBtn.disabled=false;
+    statusDiv.textContent='Clics en cours...';
+
+    const duration=5000;
+    const botSpeed=getBotSpeed();
+    const botDelay=1000/botSpeed;
+
+    botInterval=setInterval(()=>{
+      if(!running) return;
+      bot++;
+      botSpan.textContent=bot;
+    },botDelay);
+
+    timer=setTimeout(end,duration);
+  }
+
+  function end(){
+    running=false;
+    clickBtn.disabled=true;
+    clearInterval(botInterval);
+    clearTimeout(timer);
+    if(player>bot) statusDiv.textContent='Tu as gagné !';
+    else if(player<bot) statusDiv.textContent='Le bot a gagné...';
+    else statusDiv.textContent='Égalité !';
+  }
+
+  clickBtn.addEventListener('click',()=>{
+    if(!running) return;
+    player++;
+    playerSpan.textContent=player;
+  });
+
+  startBtn.addEventListener('click',start);
+})();
+</script>
+</body>
+</html>
