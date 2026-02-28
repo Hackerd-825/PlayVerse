@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Snake</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  body{font-family:Arial, sans-serif;background:#111827;color:#e5e7eb;display:flex;flex-direction:column;align-items:center;padding:28px;margin:0}
+  h1{margin:0 0 12px}
+  .controls{display:flex;gap:10px;margin-bottom:12px}
+  button,select{background:#1f2937;color:#e5e7eb;border:1px solid #4b5563;padding:8px 10px;border-radius:6px;cursor:pointer}
+  button:hover,select:hover{border-color:#9ca3af}
+  #status{min-height:20px;margin-bottom:12px}
+  .board{display:grid;grid-template-columns:repeat(20,20px);grid-template-rows:repeat(20,20px);gap:2px}
+  .cell{width:20px;height:20px;background:#111827;border-radius:4px;border:1px solid #1f2937;box-sizing:border-box}
+  .snake{background:#22c55e}
+  .food{background:#ef4444}
+  /* mobile controls */
+  .mobile-controls{display:none;margin-top:14px;text-align:center}
+  .mobile-controls .row{display:flex;justify-content:center;gap:8px}
+  .mobile-controls button{padding:12px 16px;font-size:18px;border-radius:8px}
+  @media (max-width:700px){
+    .board{transform:scale(0.9)}
+  }
+</style>
+</head>
+<body>
+  <h1>Snake</h1>
+
+  <div class="controls">
+    <button id="start">Démarrer</button>
+    <button id="pause">Pause</button>
+    <button id="reset">Réinitialiser</button>
+    <label style="display:flex;align-items:center;gap:8px">
+      Vitesse
+      <select id="speed">
+        <option value="200">Lente</option>
+        <option value="140" selected>Normale</option>
+        <option value="90">Rapide</option>
+      </select>
+    </label>
+  </div>
+
+  <div id="status">Utilise les flèches du clavier ou les contrôles tactiles.</div>
+
+  <div class="board" id="board" aria-hidden="false"></div>
+
+  <div class="mobile-controls" id="mobileControls" aria-hidden="true">
+    <div><button data-dir="up" aria-label="Haut">▲</button></div>
+    <div class="row">
+      <button data-dir="left" aria-label="Gauche">◀</button>
+      <button data-dir="right" aria-label="Droite">▶</button>
+    </div>
+    <div><button data-dir="down" aria-label="Bas">▼</button></div>
+  </div>
+
+<script>
+(() => {
+  const SIZE = 20;
+  const boardDiv = document.getElementById('board');
+  const status = document.getElementById('status');
+  const startBtn = document.getElementById('start');
+  const pauseBtn = document.getElementById('pause');
+  const resetBtn = document.getElementById('reset');
+  const speedSelect = document.getElementById('speed');
+  const mobileControls = document.getElementById('mobileControls');
+
+  let cells = [];
+  let snake = [];
+  let dir = {x:1,y:0};
+  let food = null;
+  let timer = null;
+  let running = false;
+  let gameOver = false;
+
+  function createBoard(){
+    boardDiv.innerHTML = '';
+    cells = [];
+    for(let i=0;i<SIZE*SIZE;i++){
+      const c = document.createElement('div');
+      c.className = 'cell';
+      boardDiv.appendChild(c);
+      cells.push(c);
+    }
+  }
+
+  function idx(x,y){ return y*SIZE + x; }
+
+  function placeFood(){
+    let x,y;
+    do {
+      x = Math.floor(Math.random()*SIZE);
+      y = Math.floor(Math.random()*SIZE);
+    } while(snake.some(s=>s.x===x && s.y===y));
+    food = {x,y};
+  }
+
+  function draw(){
+    cells.forEach(c=>c.classList.remove('snake','food'));
+    snake.forEach(s=>cells[idx(s.x,s.y)].classList.add('snake'));
+    if(food) cells[idx(food.x,food.y)].classList.add('food');
+  }
+
+  function resetGame(){
+    clearInterval(timer);
+    running = false;
+    gameOver = false;
+    dir = {x:1,y:0};
+    snake = [{x:5,y:10},{x:4,y:10},{x:3,y:10}];
+    placeFood();
+    draw();
+    status.textContent = 'Prêt. Appuie sur Démarrer.';
+  }
+
+  function step(){
+    if(gameOver) return;
+    const head = snake[0];
+    const nx = head.x + dir.x;
+    const ny = head.y + dir.y;
+    if(nx<0||nx>=SIZE||ny<0||ny>=SIZE || snake.some(s=>s.x===nx && s.y===ny)){
+      status.textContent = 'Game over. Réinitialise pour rejouer.';
+      gameOver = true;
+      clearInterval(timer);
+      running = false;
+      return;
+    }
+    snake.unshift({x:nx,y:ny});
+    if(food && nx===food.x && ny===food.y){
+      placeFood();
+    } else {
+      snake.pop();
+    }
+    draw();
+  }
+
+  function start(){
+    if(running || gameOver) return;
+    const sp = Number(speedSelect.value);
+    timer = setInterval(step, sp);
+    running = true;
+    status.textContent = 'En cours';
+  }
+
+  function pause(){
+    if(!running) return;
+    clearInterval(timer);
+    running = false;
+    status.textContent = 'En pause';
+  }
+
+  function setDir(newDir){
+    // prevent reverse
+    if(newDir.x === -dir.x && newDir.y === -dir.y) return;
+    dir = newDir;
+  }
+
+  // keyboard
+  window.addEventListener('keydown', e=>{
+    if(e.key==='ArrowUp') setDir({x:0,y:-1});
+    else if(e.key==='ArrowDown') setDir({x:0,y:1});
+    else if(e.key==='ArrowLeft') setDir({x:-1,y:0});
+    else if(e.key==='ArrowRight') setDir({x:1,y:0});
+    else return;
+    e.preventDefault();
+  });
+
+  // mobile detection and controls
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if(isMobile){
+    mobileControls.style.display = 'block';
+    mobileControls.setAttribute('aria-hidden','false');
+    mobileControls.querySelectorAll('button[data-dir]').forEach(btn=>{
+      btn.addEventListener('touchstart', (ev)=>{
+        const d = btn.dataset.dir;
+        if(d==='up') setDir({x:0,y:-1});
+        if(d==='down') setDir({x:0,y:1});
+        if(d==='left') setDir({x:-1,y:0});
+        if(d==='right') setDir({x:1,y:0});
+        ev.preventDefault();
+      }, {passive:false});
+    });
+
+    // swipe support (optional)
+    let touchStart = null;
+    boardDiv.addEventListener('touchstart', e=>{
+      const t = e.changedTouches[0];
+      touchStart = {x:t.clientX,y:t.clientY};
+    }, {passive:true});
+    boardDiv.addEventListener('touchend', e=>{
+      if(!touchStart) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStart.x;
+      const dy = t.clientY - touchStart.y;
+      if(Math.abs(dx) > Math.abs(dy)){
+        if(dx>20) setDir({x:1,y:0});
+        else if(dx<-20) setDir({x:-1,y:0});
+      } else {
+        if(dy>20) setDir({x:0,y:1});
+        else if(dy<-20) setDir({x:0,y:-1});
+      }
+      touchStart = null;
+    }, {passive:true});
+  }
+
+  // controls
+  startBtn.addEventListener('click', start);
+  pauseBtn.addEventListener('click', pause);
+  resetBtn.addEventListener('click', resetGame);
+  speedSelect.addEventListener('change', ()=>{
+    if(running){ clearInterval(timer); timer = setInterval(step, Number(speedSelect.value)); }
+  });
+
+  createBoard();
+  resetGame();
+})();
+</script>
+</body>
+</html>

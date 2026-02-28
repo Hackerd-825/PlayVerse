@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Jeu du Dé</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<style>
+  body{font-family:Arial, sans-serif;background:#111827;color:#e5e7eb;display:flex;flex-direction:column;align-items:center;padding:28px;margin:0}
+  h1{margin:0 0 12px}
+  .controls{display:flex;gap:10px;margin-bottom:12px}
+  button,select{background:#1f2937;color:#e5e7eb;border:1px solid #4b5563;padding:8px 10px;border-radius:6px;cursor:pointer}
+  button:hover,select:hover{border-color:#9ca3af}
+  .panel{background:#1f2937;border:1px solid #374151;border-radius:8px;padding:18px;max-width:420px;width:100%;box-sizing:border-box;text-align:center}
+  #dice{font-size:48px;margin:12px 0}
+  #rulesModal{position:fixed;left:0;top:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.6)}
+  .modalContent{background:#0b1220;color:#e5e7eb;padding:18px;border-radius:10px;max-width:520px;width:90%;border:1px solid #374151}
+  .modalContent h2{margin-top:0}
+  .modalContent p{color:#cbd5e1}
+  .modalClose{margin-top:12px}
+</style>
+</head>
+<body>
+  <h1>Jeu du Dé</h1>
+
+  <div class="controls">
+    <select id="botMode">
+      <option value="safe">Bot prudent</option>
+      <option value="aggro">Bot agressif</option>
+    </select>
+    <button id="newGame">Nouvelle partie</button>
+    <button id="rulesBtn">Règles du jeu</button>
+  </div>
+
+  <div class="panel">
+    <div id="scores">Toi: 0 | Bot: 0 (objectif: 50)</div>
+    <div id="status">À toi de jouer.</div>
+    <div id="dice">🎲</div>
+    <div style="display:flex;gap:10px;justify-content:center">
+      <button id="roll">Lancer</button>
+      <button id="hold">Garder</button>
+    </div>
+  </div>
+
+  <div id="rulesModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modalContent">
+      <h2>Règles du Jeu du Dé (Pig simplifié)</h2>
+      <p>But : atteindre un score total fixé (par défaut 50) avant l'adversaire.</p>
+      <p>Tour de jeu : le joueur lance un dé autant de fois qu'il le souhaite et additionne les résultats dans un score de tour temporaire.</p>
+      <p>Si le joueur obtient un 1 lors d'un lancer, il perd le score de tour (devient 0) et son tour s'arrête.</p>
+      <p>Le joueur peut choisir de "Garder" : le score de tour est ajouté au score total, puis le tour passe à l'adversaire.</p>
+      <p>Premier à atteindre ou dépasser l'objectif gagne.</p>
+      <div style="text-align:right">
+        <button id="closeRules" class="modalClose">Fermer</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const target = 50;
+  let playerScore = 0, botScore = 0, roundScore = 0;
+  let current = 'player';
+  const scoresDiv = document.getElementById('scores');
+  const status = document.getElementById('status');
+  const diceDiv = document.getElementById('dice');
+  const rollBtn = document.getElementById('roll');
+  const holdBtn = document.getElementById('hold');
+  const newGameBtn = document.getElementById('newGame');
+  const botMode = document.getElementById('botMode');
+
+  const rulesBtn = document.getElementById('rulesBtn');
+  const rulesModal = document.getElementById('rulesModal');
+  const closeRules = document.getElementById('closeRules');
+
+  function update(){
+    scoresDiv.textContent = `Toi: ${playerScore} | Bot: ${botScore} (objectif: ${target})`;
+  }
+
+  function setStatus(t){ status.textContent = t; }
+
+  function reset(){
+    playerScore = 0; botScore = 0; roundScore = 0; current='player';
+    update(); setStatus('À toi de jouer.'); diceDiv.textContent='🎲';
+    rollBtn.disabled = false; holdBtn.disabled = false;
+  }
+
+  function roll(){
+    if(current!=='player' && current!=='bot') return;
+    const d = Math.floor(Math.random()*6)+1;
+    diceDiv.textContent = d;
+    if(d===1){
+      roundScore = 0;
+      setStatus(`${current==='player'?'Tu':'Le bot'} as fait 1 — tour perdu.`);
+      switchTurn();
+    } else {
+      roundScore += d;
+      setStatus(`${current==='player'?'Tu as':'Le bot a'} ${roundScore} points ce tour.`);
+      if(current==='bot') setTimeout(botDecision, 600);
+    }
+  }
+
+  function hold(){
+    if(current==='player'){ playerScore += roundScore; }
+    else { botScore += roundScore; }
+    roundScore = 0;
+    update();
+    if(playerScore>=target){ setStatus('Tu as gagné !'); endGame(); return; }
+    if(botScore>=target){ setStatus('Le bot a gagné.'); endGame(); return; }
+    switchTurn();
+  }
+
+  function switchTurn(){
+    current = current==='player' ? 'bot' : 'player';
+    if(current==='player'){ setStatus('À toi de jouer.'); }
+    else { setStatus('Tour du bot...'); setTimeout(()=>roll(), 700); }
+  }
+
+  function endGame(){
+    rollBtn.disabled = true; holdBtn.disabled = true;
+  }
+
+  function botDecision(){
+    if(playerScore>=target || botScore>=target) return;
+    const mode = botMode.value;
+    const threshold = mode==='safe' ? 10 : 18;
+    if(botScore + roundScore >= target){ hold(); return; }
+    if(roundScore >= threshold) { hold(); return; }
+    // sinon relance
+    setTimeout(()=>roll(), 500);
+  }
+
+  rollBtn.addEventListener('click', ()=>{ if(current==='player') roll(); });
+  holdBtn.addEventListener('click', ()=>{ if(current==='player') hold(); });
+  newGameBtn.addEventListener('click', reset);
+
+  // rules modal
+  rulesBtn.addEventListener('click', ()=>{ rulesModal.style.display='flex'; rulesModal.setAttribute('aria-hidden','false'); });
+  closeRules.addEventListener('click', ()=>{ rulesModal.style.display='none'; rulesModal.setAttribute('aria-hidden','true'); });
+  rulesModal.addEventListener('click', e=>{ if(e.target===rulesModal){ rulesModal.style.display='none'; rulesModal.setAttribute('aria-hidden','true'); } });
+
+  reset();
+})();
+</script>
+</body>
+</html>
