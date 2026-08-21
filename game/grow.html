@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grow Garden</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Arial', sans-serif; }
+        body { background-color: #f5f5f5; color: #333; line-height: 1.6; }
+        header { background: linear-gradient(135deg, #6e48aa 0%, #9d50bb 100%); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 10px rgba(0,0,0,0.1); flex-wrap: wrap; gap: 15px; }
+        .logo-container { text-align: left; }
+        .logo { font-size: 2rem; font-weight: bold; margin-bottom: 0.2rem; }
+        .slogan { font-style: italic; opacity: 0.9; font-size: 0.9rem; }
+        .header-actions { display: flex; gap: 10px; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; min-height: calc(100vh - 300px); }
+        .content-box { background-color: white; border-radius: 8px; padding: 2rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 2rem; }
+        .content-box h1 { color: #6e48aa; margin-bottom: 1rem; font-size: 2rem; border-bottom: 2px solid #6e48aa; padding-bottom: 0.5rem; }
+        .content-box h2 { color: #6e48aa; margin-top: 1.5rem; margin-bottom: 0.8rem; font-size: 1.4rem; }
+        .btn { display: inline-block; background-color: #6e48aa; color: white; padding: 0.6rem 1.2rem; border-radius: 4px; text-decoration: none; transition: background-color 0.3s; margin-top: 1rem; border: none; cursor: pointer; font-size: 1rem; }
+        .btn:hover { background-color: #9d50bb; }
+        footer { background-color: #333; color: white; text-align: center; padding: 1.5rem 0; margin-top: 2rem; }
+        .garden-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 20px; }
+        .garden-slot { border: 2px dashed #4CAF50; border-radius: 10px; padding: 20px; text-align: center; min-height: 220px; display: flex; flex-direction: column; justify-content: center; background: #f1f8e9; transition: all 0.3s ease; }
+        .garden-slot:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .growth-progress { transition: width 1s linear; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: white; border-radius: 8px; padding: 2rem; max-width: 800px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        @media (max-width: 768px) { .garden-grid { grid-template-columns: repeat(2, 1fr); } header { flex-direction: column; align-items: center; text-align: center; } }
+    </style>
+</head>
+<body>
+    <div id="toastNotification" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 15px 30px; border-radius: 8px; z-index: 2000; font-size: 1.1rem; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.3); pointer-events: none; transition: opacity 0.3s ease;"></div>
+    <header>
+        <div class="logo-container">
+            <div class="logo">Grow Garden</div>
+            <div class="slogan">Emportez votre jardin partout !</div>
+        </div>
+        <div class="header-actions">
+            <button onclick="exportSaveFile()" class="btn" style="background: #2196F3; margin: 0;">📥 Exporter</button>
+            <button onclick="document.getElementById('importFile').click()" class="btn" style="background: #9C27B0; margin: 0;">📤 Importer</button>
+            <input type="file" id="importFile" style="display: none;" accept=".json" onchange="importSaveFile(event)">
+        </div>
+    </header>
+    <div class="container">
+        <div class="content-box" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white;">
+            <h1 style="color: white; border-bottom: 2px solid rgba(255,255,255,0.3);">🌱 Grow Garden</h1>
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px; margin-top: 20px;">
+                <div>
+                    <div style="font-size: 1.5rem; margin-bottom: 5px;">👤 <strong>Jardinier</strong></div>
+                    <div style="font-size: 1.8rem; font-weight: bold;" id="playerMoney">💰 10.00€</div>
+                </div>
+            </div>
+        </div>
+        <div class="content-box">
+            <h2>🎮 Actions rapides</h2>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px;">
+                <button onclick="showShop()" class="btn" style="background: #FF9800;">🛒 Boutique Graines</button>
+                <button onclick="showBoostShop()" class="btn" style="background: #009688;">🛍️ Boutique Engrais</button>
+                <button onclick="showPlantModal()" class="btn" style="background: #4CAF50;">🌱 Planter</button>
+                <button onclick="showInventory()" class="btn" style="background: #795548;">🎒 Inventaire</button>
+                <button onclick="showSellModal()" class="btn" style="background: #E91E63;">💵 Vendre</button>
+            </div>
+        </div>
+        <div class="content-box">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>🌿 Mon Jardin 1 (8 slots)</h2>
+                <div style="font-size: 0.9rem; color: #666;"><span id="occupiedSlots1">0</span> / 8 slots occupés</div>
+            </div>
+            <div id="gardenSlots1" class="garden-grid"></div>
+        </div>
+        <div class="content-box" id="garden2Container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>🌿 Mon Jardin 2 (8 slots)</h2>
+                <div style="font-size: 0.9rem; color: #666;"><span id="occupiedSlots2">0</span> / 8 slots occupés</div>
+            </div>
+            <div id="garden2Content"></div>
+        </div>
+    </div>
+    <div id="shopModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>🛒 Boutique de graines</h2>
+            <div id="shopItemsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin: 20px 0;"></div>
+            <div style="text-align: center; margin-top: 20px;"><button onclick="hideShop()" class="btn" style="background: #666;">Fermer</button></div>
+        </div>
+    </div>
+    <div id="boostShopModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>🛍️ Boutique Engrais & Utiles</h2>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin: 20px 0;">
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: white; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 5px;">💧</div>
+                    <div style="font-weight: bold; margin-bottom: 5px;">Arrosage Simple</div>
+                    <div style="color: #4CAF50; font-size: 0.9rem; margin-bottom: 5px;">Prix : 50€</div>
+                    <div style="color: #666; font-size: 0.8rem; margin-bottom: 10px;">Réduit la pousse de 10%.</div>
+                    <button onclick="buyAndUseWater()" class="btn" style="width: 100%; padding: 6px; background: #009688; margin-top:0;">Acheter</button>
+                </div>
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: white; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 5px;">🧪</div>
+                    <div style="font-weight: bold; margin-bottom: 5px;">Engrais Standard</div>
+                    <div style="color: #4CAF50; font-size: 0.9rem; margin-bottom: 5px;">Prix : 150€</div>
+                    <div style="color: #666; font-size: 0.8rem; margin-bottom: 10px;">Réduit la pousse de 30%.</div>
+                    <button onclick="buyAndUseFertilizer()" class="btn" style="width: 100%; padding: 6px; background: #009688; margin-top:0;">Acheter</button>
+                </div>
+                <div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: white; text-align: center;">
+                    <div style="font-size: 2rem; margin-bottom: 5px;">⚡</div>
+                    <div style="font-weight: bold; margin-bottom: 5px;">Super Engrais</div>
+                    <div style="color: #4CAF50; font-size: 0.9rem; margin-bottom: 5px;">Prix : 400€</div>
+                    <div style="color: #666; font-size: 0.8rem; margin-bottom: 10px;">Réduit la pousse de 60%.</div>
+                    <button onclick="buySuperFertilizerTarget()" class="btn" style="width: 100%; padding: 6px; background: #009688; margin-top:0;" id="buySuperBtn">Acheter</button>
+                </div>
+            </div>
+            <div style="text-align: center; margin-top: 20px;"><button onclick="hideBoostShop()" class="btn" style="background: #666;">Fermer</button></div>
+        </div>
+    </div>
+    <div id="superFertilizerModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <h2>⚡ Appliquer le Super Engrais</h2>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Choisir une plante cible :</label>
+                <select id="superFertilizerSlotSelect" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;"></select>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="executeSuperFertilizer()" class="btn" style="background: #009688; flex: 1;">⚡ Appliquer (-60%)</button>
+                <button onclick="hideSuperFertilizerModal()" class="btn" style="background: #666; flex: 1;">Annuler</button>
+            </div>
+        </div>
+    </div>
+    <div id="plantModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 600px;">
+            <h2>🌱 Planter une graine</h2>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Graines disponibles :</label>
+                <select id="plantTypeSelect" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;"></select>
+            </div>
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Choisir un slot libre :</label>
+                <select id="slotIndexSelect" style="width: 100%; padding: 0.8rem; border: 1px solid #ddd; border-radius: 4px; font-size: 1rem;"></select>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button onclick="executePlant()" class="btn" style="background: #4CAF50; flex: 1;">🌱 Planter</button>
+                <button onclick="hidePlantModal()" class="btn" style="background: #666; flex: 1;">Annuler</button>
+            </div>
+        </div>
+    </div>
+    <div id="inventoryModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>🎒 Inventaire</h2>
+            <div id="inventoryItemsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin: 20px 0;"></div>
+            <div style="text-align: center; margin-top: 20px;"><button onclick="hideInventory()" class="btn" style="background: #666;">Fermer</button></div>
+        </div>
+    </div>
+    <div id="sellModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>💵 Vendre</h2>
+            <div id="sellItemsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 15px; margin: 20px 0;"></div>
+            <div style="text-align: center; margin-top: 20px;"><button onclick="hideSellModal()" class="btn" style="background: #666;">Fermer</button></div>
+        </div>
+    </div>
+    <div id="offlineModal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 450px; text-align: center;">
+            <h2>⏳ Bon retour !</h2>
+            <p id="offlineMessage" style="margin: 20px 0; font-size: 1.1rem;"></p>
+            <button onclick="hideOfflineModal()" class="btn" style="background: #4CAF50; width: 100%;">OK</button>
+        </div>
+    </div>
+    <footer><p>Grow Garden - Gestion par Fichier</p></footer>
+    <script>
+        const plantConfig = { carrot: { name: "Carotte", emoji: "🥕", price: 2, growthTime: 10, baseValue: 3 }, potato: { name: "Patate", emoji: "🥔", price: 5, growthTime: 15, baseValue: 7 }, tomato: { name: "Tomate", emoji: "🍅", price: 7, growthTime: 20, baseValue: 10 }, corn: { name: "Maïs", emoji: "🌽", price: 10, growthTime: 30, baseValue: 15 }, cactus: { name: "Cactus", emoji: "🌵", price: 25, growthTime: 45, baseValue: 35 }, sunflower: { name: "Tournesol", emoji: "🌻", price: 35, growthTime: 60, baseValue: 50 }, blueberry: { name: "Myrtille", emoji: "🔵", price: 50, growthTime: 90, baseValue: 75 }, apple_tree: { name: "Pommier", emoji: "🌳", price: 75, growthTime: 180, baseValue: 120 }, orange_tree: { name: "Oranger", emoji: "🌳", price: 100, growthTime: 300, baseValue: 180 }, candy_blossom: { name: "Candy Blossom", emoji: "🍬", price: 500, growthTime: 600, baseValue: 1000 }, golden_melon: { name: "Melon Doré", emoji: "🌟", price: 300, growthTime: 120, baseValue: 600 }, spectral_blossom: { name: "Spectral Blossom", emoji: "👻", price: 400, growthTime: 240, baseValue: 900 } };
+        let gameState = { money: 10.00, seedsInventory: {}, harvestedInventory: {}, slots1: [null, null, null, null, null, null, null, null], slots2: null, lastSavedAt: Date.now() };
+        function showToast(m) { const t = document.getElementById('toastNotification'); t.textContent = m; t.style.display = 'block'; t.style.opacity = '1'; setTimeout(() => { t.style.opacity = '0'; setTimeout(() => { t.style.display = 'none'; }, 300); }, 2000); }
+        function exportSaveFile() { gameState.lastSavedAt = Date.now(); const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(gameState, null, 2)); const a = document.createElement('a'); a.setAttribute("href", dataStr); a.setAttribute("download", "grow_garden_save.json"); document.body.appendChild(a); a.click(); a.remove(); }
+        function importSaveFile(e) { const fr = new FileReader(); if (e.target.files[0]) { fr.readAsText(e.target.files[0], "UTF-8"); fr.onload = function(evt) { try { const d = JSON.parse(evt.target.result); if (d && typeof d.money === 'number') { let s = d.lastSavedAt ? Math.floor((Date.now() - d.lastSavedAt) / 1000) : 0; gameState = d; if(!gameState.seedsInventory) gameState.seedsInventory = {}; if(!gameState.harvestedInventory) gameState.harvestedInventory = {}; if(d.slots && !d.slots1) gameState.slots1 = d.slots; if(!gameState.slots1) gameState.slots1 = [null,null,null,null,null,null,null,null]; if(Array.isArray(gameState.slots2)) { while(gameState.slots2.length < 8) gameState.slots2.push(null); } if (s > 5) { [gameState.slots1, gameState.slots2].forEach(arr => { if(Array.isArray(arr)) arr.forEach(sl => { if(sl) sl.plantedAt -= (s * 1000); }); }); showOfflineModal(s); } updateUI(); showToast("Import réussi !"); } else { showToast("Fichier invalide."); } } catch(err) { showToast("Erreur lecture JSON."); } }; } }
+        function showOfflineModal(s) { const h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60; let str = ""; if(h>0)str+=h+"h "; if(m>0||h>0)str+=m+"min "; str+=sec+"s"; document.getElementById('offlineMessage').textContent = `Absent ${str}. Vos plantes ont poussé !`; document.getElementById('offlineModal').style.display = 'flex'; }
+        function hideOfflineModal() { document.getElementById('offlineModal').style.display = 'none'; }
+        function showShop() { document.getElementById('shopModal').style.display = 'flex'; renderShop(); }
+        function hideShop() { document.getElementById('shopModal').style.display = 'none'; }
+        function showBoostShop() { document.getElementById('boostShopModal').style.display = 'flex'; }
+        function hideBoostShop() { document.getElementById('boostShopModal').style.display = 'none'; }
+        function showSuperFertilizerModal() { document.getElementById('superFertilizerModal').style.display = 'flex'; renderSuperFertilizerOptions(); }
+        function hideSuperFertilizerModal() { document.getElementById('superFertilizerModal').style.display = 'none'; }
+        function showPlantModal() { document.getElementById('plantModal').style.display = 'flex'; renderPlantModalOptions(); }
+        function hidePlantModal() { document.getElementById('plantModal').style.display = 'none'; }
+        function showInventory() { document.getElementById('inventoryModal').style.display = 'flex'; renderInventory(); }
+        function hideInventory() { document.getElementById('inventoryModal').style.display = 'none'; }
+        function showSellModal() { document.getElementById('sellModal').style.display = 'flex'; renderSellModal(); }
+        function hideSellModal() { document.getElementById('sellModal').style.display = 'none'; }
+        function buyGarden2() { if (gameState.money >= 10000) { gameState.money -= 10000; gameState.slots2 = [null,null,null,null,null,null,null,null]; updateUI(); showToast("Jardin 2 acheté !"); } else { showToast("Il faut 10 000 € !"); } }
+        function applyBoostToAll(percent, cost, name) { if (gameState.money >= cost) { gameState.money -= cost; let b = false; [gameState.slots1, gameState.slots2].forEach(arr => { if (Array.isArray(arr)) arr.forEach(sl => { if (sl) { sl.plantedAt -= (plantConfig[sl.type].growthTime * 1000 * percent); b = true; } }); }); updateUI(); hideBoostShop(); showToast(b ? `${name} appliqué !` : `${name} acheté, mais aucun slot occupé !`); } else { showToast(`Il faut ${cost} € !`); } }
+        function buyAndUseWater() { applyBoostToAll(0.1, 50, "💧 Arrosage"); }
+        function buyAndUseFertilizer() { applyBoostToAll(0.3, 150, "🧪 Engrais Standard"); }
+        function buySuperFertilizerTarget() { hideBoostShop(); showSuperFertilizerModal(); }
+        function renderSuperFertilizerOptions() { const ss = document.getElementById('superFertilizerModal'); ss.querySelector('h2'); const sel = document.getElementById('superFertilizerSlotSelect'); sel.innerHTML = ''; let found = false; gameState.slots1.forEach((sl, i) => { if (sl) { found = true; sel.innerHTML += `<option value="1_${i}">Jardin 1 - Slot #${i + 1} (${plantConfig[sl.type].name})</option>`; } }); if (Array.isArray(gameState.slots2)) { gameState.slots2.forEach((sl, i) => { if (sl) { found = true; sel.innerHTML += `<option value="2_${i}">Jardin 2 - Slot #${i + 1} (${plantConfig[sl.type].name})</option>`; } }); } if (!found) { sel.innerHTML = `<option value="">Aucune plante active</option>`; } }
+        function executeSuperFertilizer() { const cost = 400; if (gameState.money < cost) { showToast("Il faut 400 € !"); return; } const val = document.getElementById('superFertilizerSlotSelect').value; if (!val) { showToast("Aucun slot valide sélectionné."); return; } const [gidStr, sidxStr] = val.split('_'), gid = parseInt(gidStr), sidx = parseInt(sidxStr); const arr = gid === 1 ? gameState.slots1 : gameState.slots2; if (arr && arr[sidx]) { gameState.money -= cost; arr[sidx].plantedAt -= (plantConfig[arr[sidx].type].growthTime * 1000 * 0.6); updateUI(); hideSuperFertilizerModal(); showToast("⚡ Super Engrais appliqué !"); } else { showToast("Slot vide ou invalide."); } }
+        function renderShop() { const l = document.getElementById('shopItemsList'); l.innerHTML = ''; for (const [k, p] of Object.entries(plantConfig)) { l.innerHTML += `<div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: white; text-align: center;"><div style="font-size: 2rem; margin-bottom: 5px;">${p.emoji}</div><div style="font-weight: bold; margin-bottom: 5px;">${p.name}</div><div style="color: #4CAF50; font-size: 0.9rem; margin-bottom: 5px;">Unitaire : ${p.price}€</div><div style="color: #666; font-size: 0.8rem; margin-bottom: 10px;">⏱️ ${Math.ceil(p.growthTime/60)} min</div><div style="display: flex; align-items: center; justify-content: center; gap: 5px; margin-bottom: 10px;"><input type="number" id="qty_shop_${k}" value="1" min="1" style="width: 50px; text-align: center; padding: 4px;" oninput="updateShopPrice('${k}', ${p.price})"><span id="priceLabel_shop_${k}" style="font-size: 0.9rem; font-weight: bold;">= ${p.price}€</span></div><button onclick="buySeedsCustom('${k}')" class="btn" style="width: 100%; padding: 6px; background: #FF9800; margin-top:0;">Acheter</button></div>`; } }
+        function updateShopPrice(k, up) { let q = parseInt(document.getElementById(`qty_shop_${k}`).value); if (isNaN(q) || q < 1) q = 1; document.getElementById(`priceLabel_shop_${k}`).textContent = `= ${q * up}€`; }
+        function buySeedsCustom(k) { const p = plantConfig[k]; let q = parseInt(document.getElementById(`qty_shop_${k}`).value); if (isNaN(q) || q < 1) q = 1; let c = q * p.price; if (gameState.money >= c) { gameState.money -= c; gameState.seedsInventory[k] = (gameState.seedsInventory[k] || 0) + q; updateUI(); showToast(`Achat de ${q} ${p.name} !`); } else { showToast("Pas assez d'argent !"); } }
+        function renderInventory() { const l = document.getElementById('inventoryItemsList'); l.innerHTML = ''; let ok = false; for (const [k, q] of Object.entries(gameState.seedsInventory)) { if (q > 0 && plantConfig[k]) { ok = true; const p = plantConfig[k]; l.innerHTML += `<div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: white; text-align: center;"><div style="font-size: 2rem; margin-bottom: 5px;">${p.emoji}</div><div style="font-weight: bold; margin-bottom: 5px;">${p.name}</div><div style="color: #666; font-size: 1rem; margin-top: 10px;">Quantité : <strong>x${q}</strong></div></div>`; } } if (!ok) l.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666;">Aucune graine en inventaire.</p>'; }
+        function renderPlantModalOptions() { const sp = document.getElementById('plantTypeSelect'); sp.innerHTML = ''; for (const [k, q] of Object.entries(gameState.seedsInventory)) { if (q > 0 && plantConfig[k]) sp.innerHTML += `<option value="${k}">${plantConfig[k].emoji} ${plantConfig[k].name} (x${q})</option>`; } const ss = document.getElementById('slotIndexSelect'); ss.innerHTML = ''; gameState.slots1.forEach((sl, i) => { if (!sl) ss.innerHTML += `<option value="1_${i}">Jardin 1 - Slot #${i + 1}</option>`; }); if (Array.isArray(gameState.slots2)) { gameState.slots2.forEach((sl, i) => { if (!sl) ss.innerHTML += `<option value="2_${i}">Jardin 2 - Slot #${i + 1}</option>`; }); } }
+        function executePlant() { const pk = document.getElementById('plantTypeSelect').value, ss = document.getElementById('slotIndexSelect').value; if (!pk || !ss) { showToast("Sélectionnez graine et slot."); return; } const [gid, sidxStr] = ss.split('_'), sidx = parseInt(sidxStr), arr = gid === '1' ? gameState.slots1 : gameState.slots2; if (gameState.seedsInventory[pk] > 0 && arr && !arr[sidx]) { gameState.seedsInventory[pk]--; if (gameState.seedsInventory[pk] <= 0) delete gameState.seedsInventory[pk]; const p = plantConfig[pk], tw = parseFloat((Math.random() * 3.0 + 0.5).toFixed(2)), tv = Math.round(tw * p.baseValue * 10) / 10; arr[sidx] = { type: pk, plantedAt: Date.now(), targetWeight: tw, targetValue: tv }; hidePlantModal(); updateUI(); showToast("Planté !"); } }
+        function renderSellModal() { const l = document.getElementById('sellItemsList'); l.innerHTML = ''; let ok = false; for (const [k, q] of Object.entries(gameState.seedsInventory)) { if (q > 0 && plantConfig[k]) { ok = true; const p = plantConfig[k], sp = p.price / 2; l.innerHTML += `<div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: white; text-align: center;"><div style="font-size: 2rem; margin-bottom: 5px;">${p.emoji}</div><div style="font-weight: bold; margin-bottom: 5px;">Graine : ${p.name} (x${q})</div><div style="color: #666; font-size: 0.85rem; margin-bottom: 10px;">Total : ${q * sp}€</div><button onclick="sellAllSpecificSeeds('${k}')" class="btn" style="width: 100%; padding: 6px; background: #E91E63; margin-top:0;">Vendre</button></div>`; } } if (gameState.harvestedInventory) { for (const [k, items] of Object.entries(gameState.harvestedInventory)) { if (items && items.length > 0 && plantConfig[k]) { ok = true; const p = plantConfig[k]; items.forEach((it, idx) => { l.innerHTML += `<div style="border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: white; text-align: center;"><div style="font-size: 2rem; margin-bottom: 5px;">${p.emoji}</div><div style="font-weight: bold; margin-bottom: 5px;">Récolte : ${p.name}</div><div style="font-size: 0.85rem; color: #666; margin-bottom: 5px;">⚖️ ${it.weight} kg</div><div style="font-size: 0.9rem; color: #4CAF50; font-weight: bold; margin-bottom: 10px;">💰 ${it.value}€</div><button onclick="sellSingleHarvested('${k}', ${idx})" class="btn" style="width: 100%; padding: 6px; background: #E91E63; margin-top:0;">Vendre</button></div>`; }); } } } if (!ok) l.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666;">Rien à vendre.</p>'; }
+        function sellAllSpecificSeeds(k) { const p = plantConfig[k], q = gameState.seedsInventory[k] || 0; if (q > 0) { const earn = q * (p.price / 2); gameState.money += earn; delete gameState.seedsInventory[k]; updateUI(); renderSellModal(); showToast(`Vendu ${q} graines pour ${earn}€ !`); } }
+        function harvestSlot(gid, i) { const arr = gid === 1 ? gameState.slots1 : gameState.slots2, sl = arr[i]; if (!sl) return; const p = plantConfig[sl.type], pr = Math.min(1, ((Date.now() - sl.plantedAt) / 1000) / p.growthTime); if (pr >= 1) { if (!gameState.harvestedInventory) gameState.harvestedInventory = {}; if (!gameState.harvestedInventory[sl.type]) gameState.harvestedInventory[sl.type] = []; gameState.harvestedInventory[sl.type].push({ weight: sl.targetWeight, value: sl.targetValue }); arr[i] = null; updateUI(); showToast(`Récolté (${sl.targetWeight} kg) !`); } else { showToast("Pas encore mature !"); } }
+        function sellSingleHarvested(k, idx) { const its = gameState.harvestedInventory[k]; if (!its || !its[idx]) return; const it = its[idx]; gameState.money += it.value; its.splice(idx, 1); if (its.length === 0) delete gameState.harvestedInventory[k]; updateUI(); renderSellModal(); showToast(`Vendu pour ${it.value}€ !`); }
+        function removeSlot(gid, i) { if (confirm("Arracher cette plante ?")) { (gid === 1 ? gameState.slots1 : gameState.slots2)[i] = null; updateUI(); showToast("Plante arrachée."); } }
+        function renderSlotsHTML(arr, gid) { let h = '', occ = 0; arr.forEach((sl, i) => { if (sl) { occ++; const p = plantConfig[sl.type], pr = Math.min(1, ((Date.now() - sl.plantedAt) / 1000) / p.growthTime), pct = Math.floor(pr * 100), mat = pct >= 100; const cw = parseFloat((sl.targetWeight * pr).toFixed(2)), cv = parseFloat((sl.targetValue * pr).toFixed(1)); h += `<div class="garden-slot" style="background: ${mat ? '#e8f5e9' : '#f1f8e9'}"><div style="font-size: 2rem; margin-bottom: 5px;">${p.emoji}</div><div style="margin-bottom: 5px;"><strong>${p.name}</strong></div><div style="background: #e0e0e0; border-radius: 10px; height: 10px; margin-bottom: 8px; overflow: hidden;"><div class="growth-progress" style="background: #4CAF50; width: ${pct}%; height: 100%;"></div></div><div style="font-size: 0.8rem; color: #666; margin-bottom: 5px;">${mat ? '<span style="color: #4CAF50; font-weight: bold;">✅ Mature</span>' : `⏱️ ${pct}%`}</div><div style="font-size: 0.8rem; color: #666; margin-bottom: 10px;">⚖️ ${cw} kg<br>💰 ${cv}€</div><div style="display: flex; gap: 5px; justify-content: center;">${mat ? `<button onclick="harvestSlot(${gid}, ${i})" class="btn" style="background: #4CAF50; padding: 4px 8px; font-size: 0.8rem; margin:0;">Récolter</button>` : ''}<button onclick="removeSlot(${gid}, ${i})" class="btn" style="background: #f44336; padding: 4px 8px; font-size: 0.8rem; margin:0;">Retirer</button></div></div>`; } else { h += `<div class="garden-slot" style="border: 2px dashed #ccc; background: #fafafa; display: flex; align-items: center; justify-content: center; min-height: 180px;"><div style="color: #999; text-align: center;"><div style="font-size: 1.5rem;">🌱</div><div style="font-size: 0.85rem;">Slot #${i + 1} Vide</div></div></div>`; } }); return { html: h, occupiedCount: occ }; }
+        function updateUI() { document.getElementById('playerMoney').textContent = `💰 ${gameState.money.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€`; const r1 = renderSlotsHTML(gameState.slots1, 1); document.getElementById('gardenSlots1').innerHTML = r1.html; document.getElementById('occupiedSlots1').textContent = r1.occupiedCount; const c2 = document.getElementById('garden2Content'), o2 = document.getElementById('occupiedSlots2'); if (!gameState.slots2) { c2.innerHTML = `<div style="text-align: center; padding: 30px; background: #fafafa; border-radius: 8px; border: 2px dashed #ccc;"><p style="font-size: 1.1rem; margin-bottom: 15px; color: #666;">Ce jardin est verrouillé.</p><button onclick="buyGarden2()" class="btn" style="background: #4CAF50; font-size: 1.1rem; padding: 10px 20px;">🔓 Acheter Mon Jardin 2 (10 000 €)</button></div>`; o2.textContent = "0"; } else { const r2 = renderSlotsHTML(gameState.slots2, 2); c2.innerHTML = `<div class="garden-grid">${r2.html}</div>`; o2.textContent = r2.occupiedCount; } }
+        updateUI(); setInterval(updateUI, 1000);
+    </script>
+</body>
+</html>
+
